@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>졸업</title>
+  <meta name="description" content="졸업 — 모바일에서 바로 재생 및 반복됩니다.">
+  <style>
+    html,body { height:100%; margin:0; background:#000; }
+    #video { position:fixed; inset:0; width:100vw; height:100vh; object-fit:cover; background:#000; }
+    #overlay {
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      pointer-events:auto;
+    }
+    .btn {
+      background: rgba(0,0,0,0.55); color:#fff; padding:14px 18px; border-radius:10px;
+      font-size:16px; border:1px solid rgba(255,255,255,0.08);
+    }
+    .sr-only { position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
+  </style>
+</head>
+<body>
+  <!-- 비디오 파일 이름을 필요하면 바꿔줘 (video.mp4) -->
+  <video id="video" playsinline webkit-playsinline autoplay muted loop preload="auto">
+    <source src="졸업.mp4" type="video/mp4">
+    브라우저가 video 태그를 지원하지 않습니다.
+  </video>
+
+  <!-- 자동 전체화면이 불가능한 경우 사용자 제스처로 전체화면하도록 유도하는 오버레이 -->
+  <div id="overlay" role="button" aria-hidden="false">
+    <button id="enter" class="btn">화면을 탭하면 전체화면으로 재생됩니다</button>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const enter = document.getElementById('enter');
+
+    async function tryPlayAndFullscreen() {
+      try {
+        await video.play(); // autoplay 시도 (muted여야 성공 가능)
+      } catch(e) {
+        // autoplay 차단된 경우 그냥 넘어감 — 오버레이에서 재생/전체화면 시도
+      }
+
+      // 즉시 전체화면 요청 시도 (사용자 제스처 없으면 실패함)
+      try {
+        if (video.requestFullscreen) await video.requestFullscreen();
+        else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS 용 (일부)
+        else if (video.msRequestFullscreen) await video.msRequestFullscreen();
+      } catch(e) {
+        // 실패해도 무시
+      }
+
+      updateOverlay();
+    }
+
+    function updateOverlay() {
+      const fs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+      // 전체화면 성공했으면 오버레이 숨김
+      if (fs) {
+        overlay.style.display = 'none';
+        overlay.setAttribute('aria-hidden', 'true');
+      } else {
+        // 전체화면이 아니면 오버레이 보이게 (사용자에게 탭 권장)
+        overlay.style.display = 'flex';
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    // 오버레이 버튼 클릭(또는 화면 터치)으로 강제 전체화면 + 재생
+    async function userEnter(e) {
+      e.preventDefault();
+      try { await video.play(); } catch(e){}
+      try {
+        if (video.requestFullscreen) await video.requestFullscreen();
+        else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+        else if (video.msRequestFullscreen) await video.msRequestFullscreen();
+      } catch(e) {}
+      updateOverlay();
+    }
+
+    enter.addEventListener('click', userEnter);
+    // 화면 어디든 탭하면 동작하게 (모바일 카메라 브라우저에서 버튼을 못찾는 경우 대비)
+    window.addEventListener('touchstart', function onceTouch() {
+      userEnter(new Event('user'));
+      window.removeEventListener('touchstart', onceTouch);
+    }, {passive:true});
+
+    document.addEventListener('fullscreenchange', updateOverlay);
+    document.addEventListener('webkitfullscreenchange', updateOverlay);
+    document.addEventListener('msfullscreenchange', updateOverlay);
+
+    // 페이지 열릴 때 시도
+    tryPlayAndFullscreen();
+  </script>
+</body>
+</html>
